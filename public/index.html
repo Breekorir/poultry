@@ -1,0 +1,337 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poultry Farm Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        
+body {
+    font-family: 'Inter', sans-serif;
+}
+/* This selector targets sidebar links that are active OR hovered */
+.sidebar-link.active,
+.sidebar-link:hover {
+    background-color: #15803d; /* A slightly lighter green for hover/active */
+    color: white;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+}
+.modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 24px;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: #a8a8a8;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+/* Responsive Table Styling */
+@media (max-width: 768px) {
+    .responsive-table table,
+    .responsive-table thead,
+    .responsive-table tbody,
+    .responsive-table th,
+    .responsive-table td,
+    .responsive-table tr {
+        display: block;
+    }
+
+    .responsive-table thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .responsive-table tr {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        background-color: #fff;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    }
+    
+    .responsive-table td {
+        border: none;
+        border-bottom: 1px solid #e2e8f0;
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 3rem;
+    }
+    
+    .responsive-table td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 0.75rem;
+        width: 45%;
+        padding-right: 0.75rem;
+        white-space: nowrap;
+        font-weight: 500;
+        text-align: left;
+        color: #4a5568;
+    }
+    
+    .responsive-table td:last-child {
+        border-bottom: 0;
+    }
+}
+
+/* Desktop Table Enhancements */
+@media (min-width: 769px) {
+    .responsive-table table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+    }
+    .responsive-table tbody tr {
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: background-color 0.3s ease;
+    }
+    .responsive-table tbody tr:nth-child(odd) {
+        background-color: #f9fafb;
+    }
+    .responsive-table tbody tr:hover {
+        background-color: #e6f4ea;
+    }
+    .responsive-table td {
+        padding: 12px 16px;
+        border: none;
+        vertical-align: middle;
+    }
+    .responsive-table th {
+        padding: 12px 16px;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        border-bottom: 2px solid #d1d5db;
+    }
+}
+
+/* Smooth transitions for interactive elements */
+.sidebar-link,
+button,
+.cancel-btn,
+.bg-green-600,
+.bg-green-700,
+.bg-gray-200,
+.bg-gray-300 {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Sidebar padding and hover improvements */
+#sidebar {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+}
+
+.sidebar-link {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.sidebar-link:hover {
+    background-color: #166534;
+    color: white;
+}
+
+/* Sticky sidebar and top bar shadow */
+@media (min-width: 768px) {
+    #sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        z-index: 40;
+    }
+    header.md\\:hidden {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+}
+
+/* Main content typography improvements */
+main#page-content {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #374151;
+}
+
+/* Button enhancements */
+button#addBtn,
+button.cancel-btn,
+button[type="submit"] {
+    border-radius: 0.5rem;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(22, 101, 52, 0.3);
+}
+
+
+
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="bg-green-800 text-white w-64 min-h-screen p-4 flex-col fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-30">
+            <div class="text-center py-4">
+                <img src="https://placehold.co/80x80/FFFFFF/166534?text=PFS" alt="Farm Logo" class="mx-auto rounded-full mb-2 border-2 border-green-300">
+                <h1 class="text-2xl font-bold">Poultry Farm</h1>
+            </div>
+            <nav class="flex-grow mt-6">
+                <ul class="space-y-3">
+            <li><a href="#" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md transition-colors duration-200" data-page="dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M13 5v6h6" /></svg>
+                <span>Dashboard</span>
+            </a></li>
+            <li><a href="#" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md transition-colors duration-200" data-page="flocks">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2v-5H3v5a2 2 0 002 2z" /></svg>
+                <span>Flock Management</span>
+            </a></li>
+            <li><a href="#" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md transition-colors duration-200" data-page="feed">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V7a2 2 0 00-2-2h-3.586a1 1 0 00-.707.293l-7.414 7.414a1 1 0 00-.293.707V17a2 2 0 002 2h6a2 2 0 002-2v-4z" /></svg>
+                <span>Feed Stock</span>
+            </a></li>
+            <li><a href="#" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md transition-colors duration-200" data-page="eggs">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 1.343-3 3 0 1.657 1.343 3 3 3s3-1.343 3-3c0-1.657-1.343-3-3-3z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 100 20 10 10 0 000-20z" /></svg>
+                <span>Egg Log</span>
+            </a></li>
+            <li><a href="#" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md transition-colors duration-200" data-page="vaccinations">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>Vaccinations</span>
+            </a></li>
+            <li><a href="#" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md transition-colors duration-200" data-page="mortality">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-1.414 1.414M6.343 17.657l-1.414 1.414M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span>Mortality Log</span>
+            </a></li>
+            <li><a href="#" class="sidebar-link flex items-center space-x-3 px-3 py-2 rounded-md transition-colors duration-200" data-page="sales">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h11M9 21V3M16 17l5-5-5-5" /></svg>
+                <span>Sales</span>
+            </a></li>
+                </ul>
+            </nav>
+            <div class="text-xs text-green-300 text-center mt-6">
+                <p>&copy; <span id="currentYear"></span> Poultry System</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Bar (for mobile) -->
+            <header class="md:hidden bg-white shadow-md p-4 flex justify-between items-center">
+                <h1 id="mobilePageTitle" class="text-lg font-semibold text-gray-800">Dashboard</h1>
+                <button id="menu-button" class="text-gray-600 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </header>
+
+            <!-- Main Content -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6 lg:p-8">
+                <div id="page-content">
+                    <!-- Content is loaded here by app.js -->
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="notificationModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal()">&times;</span>
+            <h2 id="modalTitle" class="text-xl font-semibold mb-2">Notification</h2>
+            <p id="modalMessage">This is a modal message.</p>
+            <div class="mt-4 text-right">
+                <button onclick="closeModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">OK</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black opacity-0 pointer-events-none md:hidden z-20 transition-opacity duration-200"></div>
+
+    <script src="app.js"></script>
+
+    <!-- Authentication Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content max-w-md">
+            <span class="close-button" onclick="closeAuthModal()">&times;</span>
+            <div id="authForms">
+                <div id="loginForm" class="auth-form">
+                    <h2 class="text-2xl font-semibold mb-4">Login</h2>
+                    <form id="loginFormElement">
+                        <label for="loginUsername" class="block mb-1 font-medium">Username</label>
+                        <input type="text" id="loginUsername" name="username" required class="w-full mb-4 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600" />
+                        <label for="loginPassword" class="block mb-1 font-medium">Password</label>
+                        <input type="password" id="loginPassword" name="password" required class="w-full mb-4 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600" />
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 w-full">Login</button>
+                    </form>
+                    <p class="mt-4 text-center">Don't have an account? <a href="#" id="showSignup" class="text-green-600 hover:underline cursor-pointer">Sign up</a></p>
+                </div>
+                <div id="signupForm" class="auth-form hidden">
+                    <h2 class="text-2xl font-semibold mb-4">Sign Up</h2>
+                    <form id="signupFormElement">
+                        <label for="signupUsername" class="block mb-1 font-medium">Username</label>
+                        <input type="text" id="signupUsername" name="username" required class="w-full mb-4 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600" />
+                        <label for="signupEmail" class="block mb-1 font-medium">Email</label>
+                        <input type="email" id="signupEmail" name="email" required class="w-full mb-4 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600" />
+                        <label for="signupPassword" class="block mb-1 font-medium">Password</label>
+                        <input type="password" id="signupPassword" name="password" required class="w-full mb-4 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-600" />
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 w-full">Sign Up</button>
+                    </form>
+                    <p class="mt-4 text-center">Already have an account? <a href="#" id="showLogin" class="text-green-600 hover:underline cursor-pointer">Login</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
