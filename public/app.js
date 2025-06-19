@@ -191,3 +191,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initializeApp();
 });
+function renderDashboard() {
+    pageContent.innerHTML = `<h2 class="text-xl font-bold">Dashboard</h2><p>Welcome to your poultry dashboard!</p>`;
+}
+
+function renderFlocksPage() {
+    pageContent.innerHTML = `<h2 class="text-xl font-bold">Flocks</h2><p>Manage your flocks here.</p>`;
+}
+
+function renderFeedPage() {
+    pageContent.innerHTML = `<h2 class="text-xl font-bold">Feed Logs</h2><p>Track feed usage.</p>`;
+}
+
+function renderEggsPage() {
+    pageContent.innerHTML = `<h2 class="text-xl font-bold">Egg Collection</h2><p>Log egg data.</p>`;
+}
+
+function renderMortalityPage() {
+    pageContent.innerHTML = `<h2 class="text-xl font-bold">Mortality</h2><p>Log bird deaths.</p>`;
+}
+
+function renderSalesPage() {
+    pageContent.innerHTML = `<h2 class="text-xl font-bold">Sales</h2><p>Track egg or chicken sales.</p>`;
+}
+
+function renderVaccinationsPage() {
+    pageContent.innerHTML = `<h2 class="text-xl font-bold">Vaccinations</h2><p>Track vaccine records.</p>`;
+}
