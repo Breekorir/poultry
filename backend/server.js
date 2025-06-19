@@ -1,266 +1,121 @@
+// BACKEND SERVER FOR POULTRY FARM APP (Express.js)
+
 const express = require('express');
-const path = require('path');
-const mysql = require('mysql2/promise');
-const bcrypt = require('bcrypt');
+const cors = require('cors');
+const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
-
 const app = express();
-const port = 3000;
-const JWT_SECRET = 'your_jwt_secret_here'; // Replace with a secure secret in production
 
-// Middleware
-app.use(express.json());
-app.use(express.static('public'));
+const PORT = 3000;
+const SECRET_KEY = 'poultrySecretKey';
 
-// MySQL Pool
-const pool = mysql.createPool({
-    host: 'localhost',
-    user: 'root',          // <-- Replace
-    password: '',  // <-- Replace
-    database: 'poultry_farm_db',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+app.use(cors());
+app.use(bodyParser.json());
 
-// Authentication Middleware
+// --- FAKE IN-MEMORY DB ---
+let users = [];
+let flocks = [];
+let feedStock = [];
+let eggs = [];
+let sales = [];
+let mortality = [];
+let vaccinations = [];
+
+// --- AUTH MIDDLEWARE ---
 function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ success: false, message: 'Access token missing' });
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'No token provided' });
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ success: false, message: 'Invalid token' });
-        req.user = user;
-        next();
-    });
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ message: 'Invalid token' });
+    req.user = user;
+    next();
+  });
 }
 
-// Signup Endpoint
-app.post('/api/signup', async (req, res) => {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password) {
-        return res.status(400).json({ success: false, message: 'Username, email, and password are required' });
-    }
-    try {
-        const [existingUsers] = await pool.query('SELECT id FROM users WHERE username = ? OR email = ?', [username, email]);
-        if (existingUsers.length > 0) {
-            return res.status(409).json({ success: false, message: 'Username or email already exists' });
-        }
-        const password_hash = await bcrypt.hash(password, 10);
-        const [result] = await pool.query('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)', [username, email, password_hash]);
-        res.status(201).json({ success: true, message: 'User registered successfully' });
-    } catch (error) {
-        console.error('Signup error:', error);
-        res.status(500).json({ success: false, message: 'Failed to register user' });
-    }
+// --- AUTH ROUTES ---
+app.post('/api/signup', (req, res) => {
+  const { email, password } = req.body;
+  if (users.find(u => u.email === email)) {
+    return res.status(400).json({ message: 'User already exists' });
+  }
+  users.push({ email, password });
+  res.json({ success: true });
 });
 
-// Login Endpoint
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ success: false, message: 'Username and password are required' });
-    }
-    try {
-        const [users] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
-        if (users.length === 0) {
-            return res.status(401).json({ success: false, message: 'Invalid username or password' });
-        }
-        const user = users[0];
-        const match = await bcrypt.compare(password, user.password_hash);
-        if (!match) {
-            return res.status(401).json({ success: false, message: 'Invalid username or password' });
-        }
-        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '1h' });
-        res.json({ success: true, token });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ success: false, message: 'Failed to login' });
-    }
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+  const user = users.find(u => u.email === email && u.password === password);
+  if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+  const token = jwt.sign({ email }, SECRET_KEY);
+  res.json({ success: true, token });
 });
 
-// Protect all other API routes
-app.use('/api', (req, res, next) => {
-    if (req.path === '/signup' || req.path === '/login') {
-        return next();
-    }
-    authenticateToken(req, res, next);
+// --- PROTECTED API ROUTES ---
+
+app.get('/api/dashboard-stats', authenticateToken, (req, res) => {
+  const totalFlocks = flocks.length;
+  const totalBirds = flocks.reduce((sum, f) => sum + f.initialBirdCount, 0);
+  const eggsToday = eggs.filter(e => e.date === new Date().toISOString().slice(0, 10)).reduce((sum, e) => sum + e.quantity, 0);
+  const revenueLast30Days = sales.reduce((sum, s) => sum + (s.unitPrice * s.quantity), 0);
+  res.json({ totalFlocks, totalBirds, eggsToday, revenueLast30Days });
 });
 
-// Dashboard Stats
-app.get('/api/dashboard-stats', async (req, res) => {
-    try {
-        const [flocks] = await pool.query("SELECT COUNT(*) as totalFlocks, SUM(currentBirdCount) as totalBirds FROM flocks WHERE status = 'active'");
-        const [sales] = await pool.query("SELECT SUM(totalPrice) as totalRevenue FROM sales WHERE saleDate >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
-        const [eggs] = await pool.query("SELECT SUM(quantity) as eggsToday FROM eggs WHERE date = CURDATE()");
-
-        res.json({
-            totalFlocks: flocks[0].totalFlocks || 0,
-            totalBirds: flocks[0].totalBirds || 0,
-            revenueLast30Days: sales[0].totalRevenue || 0,
-            eggsToday: eggs[0].eggsToday || 0
-        });
-    } catch (error) {
-        console.error("Dashboard error:", error);
-        res.status(500).json({ success: false, message: 'Failed to fetch dashboard stats.' });
-    }
+app.get('/api/flocks', authenticateToken, (req, res) => res.json(flocks));
+app.post('/api/flocks', authenticateToken, (req, res) => {
+  const flock = req.body;
+  flock.id = Date.now();
+  flocks.push(flock);
+  res.json({ success: true, message: 'Flock added successfully' });
 });
 
-// Flocks
-app.get('/api/flocks', async (req, res) => {
-    try {
-        const [rows] = await pool.query("SELECT * FROM flocks ORDER BY id DESC");
-        res.json(rows);
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to fetch flocks.' });
-    }
+app.get('/api/feed', authenticateToken, (req, res) => res.json(feedStock));
+app.post('/api/feed', authenticateToken, (req, res) => {
+  feedStock.push(req.body);
+  res.json({ success: true, message: 'Feed log added successfully' });
 });
 
-app.post('/api/flocks', async (req, res) => {
-    const { flockName, breed, initialBirdCount, acquisitionDate, flockStatus } = req.body;
-    try {
-        const query = `INSERT INTO flocks (name, breed, initialBirdCount, currentBirdCount, acquisitionDate, status) VALUES (?, ?, ?, ?, ?, ?)`;
-        const values = [flockName, breed, +initialBirdCount, +initialBirdCount, acquisitionDate, flockStatus];
-        const [result] = await pool.query(query, values);
-        res.status(201).json({ success: true, message: 'Flock added successfully!', data: { id: result.insertId, ...req.body } });
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to add flock.' });
-    }
+app.get('/api/eggs', authenticateToken, (req, res) => {
+  const enriched = eggs.map(e => ({ ...e, flockName: flocks.find(f => f.id == e.flockId)?.name || 'Unknown' }));
+  res.json(enriched);
+});
+app.post('/api/eggs', authenticateToken, (req, res) => {
+  eggs.push(req.body);
+  res.json({ success: true, message: 'Egg log added successfully' });
 });
 
-// Feed
-app.get('/api/feed', async (req, res) => {
-    try {
-        const [rows] = await pool.query("SELECT * FROM feed ORDER BY purchaseDate DESC");
-        res.json(rows);
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to fetch feed stock.' });
-    }
+app.get('/api/mortality', authenticateToken, (req, res) => {
+  const enriched = mortality.map(m => ({ ...m, flockName: flocks.find(f => f.id == m.flockId)?.name || 'Unknown' }));
+  res.json(enriched);
+});
+app.post('/api/mortality', authenticateToken, (req, res) => {
+  mortality.push(req.body);
+  res.json({ success: true, message: 'Mortality log added successfully' });
 });
 
-app.post('/api/feed', async (req, res) => {
-    const { feedType, quantityKg, purchaseDate, supplier } = req.body;
-    try {
-        const query = "INSERT INTO feed (type, quantityKg, purchaseDate, supplier) VALUES (?, ?, ?, ?)";
-        const values = [feedType, +quantityKg, purchaseDate, supplier];
-        const [result] = await pool.query(query, values);
-        res.status(201).json({ success: true, message: 'Feed purchase logged!', data: { id: result.insertId, ...req.body } });
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to log feed.' });
-    }
+app.get('/api/sales', authenticateToken, (req, res) => {
+  const enriched = sales.map(s => ({
+    ...s,
+    formattedTotalPrice: `Ksh ${(s.unitPrice * s.quantity).toFixed(2)}`
+  }));
+  res.json(enriched);
+});
+app.post('/api/sales', authenticateToken, (req, res) => {
+  sales.push(req.body);
+  res.json({ success: true, message: 'Sale recorded successfully' });
 });
 
-// Eggs
-app.get('/api/eggs', async (req, res) => {
-    try {
-        const query = `SELECT e.*, f.name AS flockName FROM eggs e LEFT JOIN flocks f ON e.flockId = f.id ORDER BY e.date DESC, e.id DESC`;
-        const [rows] = await pool.query(query);
-        res.json(rows);
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to fetch eggs.' });
-    }
+app.get('/api/vaccinations', authenticateToken, (req, res) => {
+  const enriched = vaccinations.map(v => ({ ...v, flockName: flocks.find(f => f.id == v.flockId)?.name || 'Unknown' }));
+  res.json(enriched);
+});
+app.post('/api/vaccinations', authenticateToken, (req, res) => {
+  vaccinations.push(req.body);
+  res.json({ success: true, message: 'Vaccination record added successfully' });
 });
 
-app.post('/api/eggs', async (req, res) => {
-    const { flockId, date, quantity, gradeA, gradeB } = req.body;
-    try {
-        const query = "INSERT INTO eggs (flockId, date, quantity, gradeA, gradeB) VALUES (?, ?, ?, ?, ?)";
-        const values = [+flockId, date, +quantity, +gradeA || 0, +gradeB || 0];
-        const [result] = await pool.query(query, values);
-        res.status(201).json({ success: true, message: 'Eggs logged!', data: { id: result.insertId, ...req.body } });
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to log eggs.' });
-    }
+// --- SERVER ---
+app.listen(PORT, () => {
+  console.log(`Poultry Farm API running on http://localhost:${PORT}`);
 });
-
-// Mortality
-app.get('/api/mortality', async (req, res) => {
-    try {
-        const query = `SELECT m.*, f.name AS flockName FROM mortality m LEFT JOIN flocks f ON m.flockId = f.id ORDER BY m.date DESC, m.id DESC`;
-        const [rows] = await pool.query(query);
-        res.json(rows);
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to fetch mortality logs.' });
-    }
-});
-
-app.post('/api/mortality', async (req, res) => {
-    const { flockId, date, count, cause } = req.body;
-    const connection = await pool.getConnection();
-    try {
-        await connection.beginTransaction();
-        await connection.query("INSERT INTO mortality (flockId, date, count, cause) VALUES (?, ?, ?, ?)", [+flockId, date, +count, cause]);
-        await connection.query("UPDATE flocks SET currentBirdCount = currentBirdCount - ? WHERE id = ?", [+count, +flockId]);
-        await connection.commit();
-        res.status(201).json({ success: true, message: 'Mortality recorded and flock updated.' });
-    } catch {
-        await connection.rollback();
-        res.status(500).json({ success: false, message: 'Failed to record mortality.' });
-    } finally {
-        connection.release();
-    }
-});
-
-// Sales
-app.get('/api/sales', async (req, res) => {
-    try {
-        const [rows] = await pool.query("SELECT *, FORMAT(totalPrice, 2) as formattedTotalPrice FROM sales ORDER BY saleDate DESC");
-        res.json(rows);
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to fetch sales.' });
-    }
-});
-
-app.post('/api/sales', async (req, res) => {
-    const { item, quantity, unitPrice, saleDate, customer } = req.body;
-    try {
-        const totalPrice = +quantity * +unitPrice;
-        const query = "INSERT INTO sales (item, quantity, unitPrice, totalPrice, saleDate, customer) VALUES (?, ?, ?, ?, ?, ?)";
-        const values = [item, +quantity, +unitPrice, totalPrice, saleDate, customer];
-        const [result] = await pool.query(query, values);
-        res.status(201).json({ success: true, message: 'Sale recorded.', data: { id: result.insertId, ...req.body, totalPrice } });
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to record sale.' });
-    }
-});
-
-// Vaccinations
-app.get('/api/vaccinations', async (req, res) => {
-    try {
-        const query = `SELECT v.*, f.name AS flockName FROM vaccinations v LEFT JOIN flocks f ON v.flockId = f.id ORDER BY v.vaccinationDate DESC`;
-        const [rows] = await pool.query(query);
-        res.json(rows);
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to fetch vaccinations.' });
-    }
-});
-
-app.post('/api/vaccinations', async (req, res) => {
-    const { flockId, vaccineName, method, vaccinationDate, notes } = req.body;
-    try {
-        const query = "INSERT INTO vaccinations (flockId, vaccineName, method, vaccinationDate, notes) VALUES (?, ?, ?, ?, ?)";
-        const values = [+flockId, vaccineName, method, vaccinationDate, notes];
-        const [result] = await pool.query(query, values);
-        res.status(201).json({ success: true, message: 'Vaccination recorded.', data: { id: result.insertId, ...req.body } });
-    } catch {
-        res.status(500).json({ success: false, message: 'Failed to add vaccination.' });
-    }
-});
-
-// Frontend Fallbacknode 
-
-// Start Server
-pool.getConnection()
-    .then(connection => {
-        console.log('Connected to MySQL.');
-        connection.release();
-        app.listen(port, () => {
-            console.log(`Server running at http://localhost:${port}`);
-        });
-    })
-    .catch(error => {
-        console.error('DB connection failed. Check credentials.');
-        console.error(error.message);
-        process.exit(1);
-    });
