@@ -1,25 +1,29 @@
 // BACKEND SERVER FOR POULTRY FARM APP (Express.js)
 
+
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const mysql = require('mysql2/promise');
 const app = express();
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const SECRET_KEY = 'poultrySecretKey';
+
+// MySQL connection pool
+const pool = mysql.createPool({
+  host: process.env.MYSQL_HOST || 'localhost',
+  user: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_PASSWORD || '',
+  database: process.env.MYSQL_DATABASE || 'poultry_farm',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
 
 app.use(cors());
 app.use(bodyParser.json());
-
-// --- FAKE IN-MEMORY DB ---
-let users = [];
-let flocks = [];
-let feedStock = [];
-let eggs = [];
-let sales = [];
-let mortality = [];
-let vaccinations = [];
 
 // --- AUTH MIDDLEWARE ---
 function authenticateToken(req, res, next) {
@@ -35,24 +39,45 @@ function authenticateToken(req, res, next) {
 }
 
 // --- AUTH ROUTES ---
-app.post('/api/signup', (req, res) => {
-  const { email, password } = req.body;
-  if (users.find(u => u.email === email)) {
-    return res.status(400).json({ message: 'User already exists' });
+app.post('/api/signup', async (req, res) => {
+  const { username, email, password } = req.body;
+  try {
+    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    if (rows.length > 0) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+    await pool.query('INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)', [username, email, password]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-  users.push({ email, password });
-  res.json({ success: true });
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
-  const user = users.find(u => u.email === email && u.password === password);
-  if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-  const token = jwt.sign({ email }, SECRET_KEY);
-  res.json({ success: true, token });
+  try {
+    const [rows] = await pool.query('SELECT * FROM users WHERE email = ? AND password_hash = ?', [email, password]);
+    if (rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    const token = jwt.sign({ email }, SECRET_KEY);
+    res.json({ success: true, token });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 // --- PROTECTED API ROUTES ---
+// For simplicity, keeping the rest of the routes using in-memory arrays as before
+
+let flocks = [];
+let feedStock = [];
+let eggs = [];
+let sales = [];
+let mortality = [];
+let vaccinations = [];
 
 app.get('/api/dashboard-stats', authenticateToken, (req, res) => {
   const totalFlocks = flocks.length;
@@ -117,5 +142,5 @@ app.post('/api/vaccinations', authenticateToken, (req, res) => {
 
 // --- SERVER ---
 app.listen(PORT, () => {
-  console.log(`Poultry Farm API running on http://localhost:${PORT}`);
+  console.log(`Poultry Farm API running on port ${PORT}`);
 });
